@@ -5,8 +5,8 @@ import flask
 
 from flask import Flask, render_template, request, redirect, url_for, session, flash, send_file, abort
 from flask_sqlalchemy import SQLAlchemy
-from werkzeug.utils import secure_filename, generate_password_hash, check_password_hash
-from io import BytesIO
+from werkzeug.utils import secure_filename
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'change-this-secret-key')
