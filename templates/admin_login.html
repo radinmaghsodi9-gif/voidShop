@@ -1,1 +1,35 @@
-{% extends 'base.html' %}{% block content %}<div class="formbox"><h2>پنل مدیریت</h2><form method="post"><input name="username" placeholder="نام کاربری" required><input name="password" type="password" placeholder="رمز عبور" required><button>ورود</button></form></div>{% endblock %}
+```html
+{% extends "base.html" %}
+
+{% block content %}
+<section class="panel" style="max-width: 500px; margin: 50px auto;">
+    <h2>ورود به پنل مدیریت</h2>
+
+    <form method="post" class="settings">
+        <label>
+            ایمیل
+            <input
+                type="email"
+                name="username"
+                placeholder="owner@example.com"
+                required
+                autocomplete="email"
+            >
+        </label>
+
+        <label>
+            رمز عبور
+            <input
+                type="password"
+                name="password"
+                placeholder="رمز عبور"
+                required
+                autocomplete="current-password"
+            >
+        </label>
+
+        <button type="submit">ورود به پنل مدیریت</button>
+    </form>
+</section>
+{% endblock %}
+```
