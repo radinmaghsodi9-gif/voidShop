@@ -145,7 +145,9 @@ def owner_required(fn):
         if not session.get('admin') or session.get('admin_role') != 'owner':
             flash('این بخش فقط برای Owner است.', 'error')
             return redirect(url_for('admin'))
+
         return fn(*args, **kwargs)
+
     return wrapper
 
 def user_required(fn):
@@ -174,7 +176,9 @@ def guard_maintenance():
         return render_template('maintenance.html'), 503
 
 with app.app_context():
-    db.create_all() @app.route('/')
+    db.create_all()
+
+@app.route('/')
 def index():
     q = request.args.get('q','').strip()
     cat = request.args.get('category','').strip()
