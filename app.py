@@ -327,12 +327,28 @@ def admin_logout():
 @app.route('/admin')
 @admin_required
 def admin():
-    login_requests = LoginRequest.query.filter_by(used=False).order_by(LoginRequest.created_at.desc()).all()
     orders = Order.query.order_by(Order.created_at.desc()).all()
-    products = Product.query.order_by(Product.category, Product.name).all()
-    settings = {x.key:x.value for x in Setting.query.all()}
-    return render_template('admin.html', orders=orders, products=products, login_requests=login_requests, settings={**DEFAULT_SETTINGS,**settings})
+    products = Product.query.order_by(Product.id).all()
 
+    settings = {
+        s.key: s.value
+        for s in Setting.query.all()
+    }
+
+    staff_admins = StaffAdmin.query.order_by(
+        StaffAdmin.created_at.desc()
+    ).all()
+
+    return render_template(
+        'admin.html',
+        orders=orders,
+        products=products,
+        login_requests=login_requests,
+        settings={**DEFAULT_SETTINGS, **settings},
+        staff_admins=staff_admins,
+        admin_role=session.get('admin_role'),
+        admin_email=session.get('admin_email')
+    )
 
 @app.route('/admin/login-request/<int:request_id>/approve', methods=['POST'])
 @admin_required
@@ -442,17 +458,6 @@ def edit_settings():
 @app.errorhandler(413)
 def too_large(_):
     staff_admins = StaffAdmin.query.order_by(StaffAdmin.created_at.desc()).all()
-
-return render_template(
-    'admin.html',
-    orders=orders,
-    products=products,
-    login_requests=login_requests,
-    settings={**DEFAULT_SETTINGS, **settings},
-    staff_admins=staff_admins,
-    admin_role=session.get('admin_role'),
-    admin_email=session.get('admin_email')
-)
 
 
 def seed():
