@@ -287,8 +287,7 @@ def success(order_id):
 
 OWNER_EMAIL = 'radinmaghsodi9@gmail.com'
 
-
-@app.route('/admin/login', methods=['GET','POST'])
+@app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
     if request.method == 'POST':
         email = request.form.get('username', '').strip().lower()
@@ -300,6 +299,7 @@ def admin_login():
             session['admin'] = True
             session['admin_role'] = 'owner'
             session['admin_email'] = OWNER_EMAIL
+
             return redirect(url_for('admin'))
 
         staff = StaffAdmin.query.filter_by(
@@ -307,10 +307,14 @@ def admin_login():
             active=True
         ).first()
 
-        if staff and check_password_hash(staff.password_hash, password):
+        if staff and check_password_hash(
+            staff.password_hash,
+            password
+        ):
             session['admin'] = True
             session['admin_role'] = 'admin'
             session['admin_email'] = staff.email
+
             return redirect(url_for('admin'))
 
         flash('ایمیل یا رمز عبور اشتباه است.', 'error')
@@ -322,17 +326,29 @@ def admin_logout():
     session.pop('admin', None)
     session.pop('admin_role', None)
     session.pop('admin_email', None)
+
     return redirect(url_for('index'))
 
 @app.route('/admin')
-@admin_required
 def admin():
-    orders = Order.query.order_by(Order.created_at.desc()).all()
-    products = Product.query.order_by(Product.id).all()
+    if not session.get('admin'):
+        return redirect(url_for('admin_login'))
+
+    orders = Order.query.order_by(
+        Order.created_at.desc()
+    ).all()
+
+    products = Product.query.order_by(
+        Product.id.asc()
+    ).all()
+
+    login_requests = LoginRequest.query.order_by(
+        LoginRequest.created_at.desc()
+    ).all()
 
     settings = {
-        s.key: s.value
-        for s in Setting.query.all()
+        setting.key: setting.value
+        for setting in Setting.query.all()
     }
 
     staff_admins = StaffAdmin.query.order_by(
