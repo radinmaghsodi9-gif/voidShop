@@ -30,8 +30,12 @@ class StaffAdmin(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(180), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
-    active = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    active = db.Column(db.Boolean, default=True, nullable=False)
+    created_at = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        nullable=False
+    )
 
 class Product(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -169,7 +173,8 @@ def guard_maintenance():
     if s and s.value == '1' and not session.get('admin'):
         return render_template('maintenance.html'), 503
 
-@app.route('/')
+with app.app_context():
+    db.create_all() @app.route('/')
 def index():
     q = request.args.get('q','').strip()
     cat = request.args.get('category','').strip()
@@ -470,7 +475,39 @@ def receipt(order_id):
     order = Order.query.get_or_404(order_id)
     if not order.receipt_data: abort(404)
     return send_file(BytesIO(order.receipt_data), mimetype=order.receipt_mime or 'application/octet-stream', download_name=order.receipt_name or f'receipt-{order.id}')
+@app.route('/admin/product/add', methods=['POST'])
+@admin_required
+def add_product():
+    name = request.form.get('name', '').strip()
+    price = request.form.get('price', '0').strip()
+    description = request.form.get('description', '').strip()
 
+    if not name:
+        flash('نام محصول را وارد کنید.', 'error')
+        return redirect(url_for('admin'))
+
+    try:
+        price = int(price)
+    except ValueError:
+        flash('قیمت باید عدد باشد.', 'error')
+        return redirect(url_for('admin'))
+
+    if price < 0:
+        flash('قیمت نمی‌تواند منفی باشد.', 'error')
+        return redirect(url_for('admin'))
+
+    product = Product(
+        name=name,
+        price=price,
+        description=description,
+        active=True
+    )
+
+    db.session.add(product)
+    db.session.commit()
+
+    flash('محصول جدید اضافه شد.', 'ok')
+    return redirect(url_for('admin'))
 @app.route('/admin/product/<int:product_id>', methods=['POST'])
 @admin_required
 def edit_product(product_id):
