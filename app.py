@@ -5,7 +5,7 @@ import flask
 
 from flask import Flask, render_template, request, redirect, url_for, session, flash, send_file, abort
 from flask_sqlalchemy import SQLAlchemy
-from werkzeug.utils import secure_filename
+from werkzeug.utils import secure_filename, generate_password_hash, check_password_hash
 from io import BytesIO
 
 app = Flask(__name__)
@@ -24,6 +24,13 @@ ALLOWED_RECEIPTS = {'png','jpg','jpeg','webp','pdf'}
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     phone = db.Column(db.String(32), unique=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class StaffAdmin(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(180), unique=True, nullable=False)
+    password_hash = db.Column(db.String(255), nullable=False)
+    active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Product(db.Model):
@@ -124,6 +131,16 @@ def admin_required(fn):
     def wrapper(*args, **kwargs):
         if not session.get('admin'):
             return redirect(url_for('admin_login'))
+        return fn(*args, **kwargs)
+    return wrapper
+
+
+def owner_required(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        if not session.get('admin') or session.get('admin_role') != 'owner':
+            flash('این بخش فقط برای Owner است.', 'error')
+            return redirect(url_for('admin'))
         return fn(*args, **kwargs)
     return wrapper
 
@@ -268,18 +285,44 @@ def success(order_id):
     order = Order.query.filter_by(id=order_id, user_id=session['user_id']).first_or_404()
     return render_template('success.html', order=order)
 
+OWNER_EMAIL = 'radinmaghsodi9@gmail.com'
+
+
 @app.route('/admin/login', methods=['GET','POST'])
 def admin_login():
     if request.method == 'POST':
-        u = request.form.get('username',''); p = request.form.get('password','')
-        if u == os.getenv('ADMIN_USERNAME','admin') and p == os.getenv('ADMIN_PASSWORD','change-me'):
-            session['admin'] = True; return redirect(url_for('admin'))
-        flash('اطلاعات ورود اشتباه است.','error')
+        email = request.form.get('username', '').strip().lower()
+        password = request.form.get('password', '')
+
+        owner_password = os.getenv('ADMIN_PASSWORD', 'change-me')
+
+        if email == OWNER_EMAIL and password == owner_password:
+            session['admin'] = True
+            session['admin_role'] = 'owner'
+            session['admin_email'] = OWNER_EMAIL
+            return redirect(url_for('admin'))
+
+        staff = StaffAdmin.query.filter_by(
+            email=email,
+            active=True
+        ).first()
+
+        if staff and check_password_hash(staff.password_hash, password):
+            session['admin'] = True
+            session['admin_role'] = 'admin'
+            session['admin_email'] = staff.email
+            return redirect(url_for('admin'))
+
+        flash('ایمیل یا رمز عبور اشتباه است.', 'error')
+
     return render_template('admin_login.html')
 
 @app.route('/admin/logout')
 def admin_logout():
-    session.pop('admin',None); return redirect(url_for('index'))
+    session.pop('admin', None)
+    session.pop('admin_role', None)
+    session.pop('admin_email', None)
+    return redirect(url_for('index'))
 
 @app.route('/admin')
 @admin_required
@@ -309,6 +352,53 @@ def get_code_for_admin(request_id):
     # derive a support-visible code from a server-side temporary value stored in the session is not possible across devices.
     # This function is replaced below by the support-code flow using a separate encrypted/plain temporary field.
     return 'کد در نسخه بعدی'
+@app.route('/admin/staff/add', methods=['POST'])
+@owner_required
+def add_staff_admin():
+    email = request.form.get('email', '').strip().lower()
+    password = request.form.get('password', '')
+
+    if not email or '@' not in email:
+        flash('ایمیل معتبر وارد کنید.', 'error')
+        return redirect(url_for('admin'))
+
+    if len(password) < 6:
+        flash('رمز عبور باید حداقل ۶ کاراکتر باشد.', 'error')
+        return redirect(url_for('admin'))
+
+    if email == OWNER_EMAIL:
+        flash('ایمیل Owner را نمی‌توان به عنوان Admin اضافه کرد.', 'error')
+        return redirect(url_for('admin'))
+
+    existing = StaffAdmin.query.filter_by(email=email).first()
+
+    if existing:
+        flash('این Admin قبلاً وجود دارد.', 'error')
+        return redirect(url_for('admin'))
+
+    staff = StaffAdmin(
+        email=email,
+        password_hash=generate_password_hash(password),
+        active=True
+    )
+
+    db.session.add(staff)
+    db.session.commit()
+
+    flash('Admin جدید اضافه شد.', 'ok')
+    return redirect(url_for('admin'))
+
+
+@app.route('/admin/staff/<int:admin_id>/delete', methods=['POST'])
+@owner_required
+def delete_staff_admin(admin_id):
+    staff = StaffAdmin.query.get_or_404(admin_id)
+
+    db.session.delete(staff)
+    db.session.commit()
+
+    flash('Admin حذف شد.', 'ok')
+    return redirect(url_for('admin'))
 
 @app.route('/admin/order/<int:order_id>/status', methods=['POST'])
 @admin_required
@@ -351,7 +441,18 @@ def edit_settings():
 
 @app.errorhandler(413)
 def too_large(_):
-    return render_template('error.html', message='فایل رسید بزرگ‌تر از حد مجاز است.'), 413
+    staff_admins = StaffAdmin.query.order_by(StaffAdmin.created_at.desc()).all()
+
+return render_template(
+    'admin.html',
+    orders=orders,
+    products=products,
+    login_requests=login_requests,
+    settings={**DEFAULT_SETTINGS, **settings},
+    staff_admins=staff_admins,
+    admin_role=session.get('admin_role'),
+    admin_email=session.get('admin_email')
+)
 
 
 def seed():
