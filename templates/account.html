@@ -1,1 +1,54 @@
-{% extends 'base.html' %}{% block content %}<h2>حساب من</h2><section class="panel"><h3>سفارش‌ها</h3>{% for o in orders %}<div class="row"><span>#{{o.id}} — {{o.product_name}}</span><span>{{o.price|money}} تومان</span><b>{{status_fa[o.status]}}</b></div>{% else %}<p>هنوز سفارشی نداری.</p>{% endfor %}</section><section class="panel"><h3>علاقه‌مندی‌ها</h3><div class="grid mini">{% for p in fav_products %}<article class="card"><h3>{{p.name}}</h3><a class="btn" href="{{url_for('order',product_id=p.id)}}">سفارش</a></article>{% else %}<p>موردی ذخیره نشده.</p>{% endfor %}</div></section>{% endblock %}
+{% extends 'base.html' %}{% block content %}<h2>حساب من</h2><section class="panel"><h3>سفارش‌ها</h3>{% for o in orders %}<div class="row"><span>#{{o.id}} — {{o.product_name}}</span><span>{{o.price|money}} تومان</span><b>{{status_fa[o.status]}}</b></div>{% else %}<p>هنوز سفارشی نداری.</p>{% endfor %}</section><section class="panel"><h3>علاقه‌مندی‌ها</h3><div class="grid mini">{% for p in fav_products %}<article class="card"><h3>{{p.name}}</h3><a class="btn" href="{{url_for('order',product_id=p.id)}}">سفارش</a></article>{% else %}<p>موردی ذخیره نشده.</p>{% endfor %}</div></section>{% endblock %}<section class="panel management-access-panel">
+
+    <h3>دسترسی ویژه</h3>
+
+    <p>
+        برای دسترسی به بخش‌های مدیریتی، کد دسترسی را وارد کنید.
+    </p>
+
+    <form method="post" action="{{ url_for('management_access') }}">
+
+        <input
+            type="password"
+            name="management_code"
+            placeholder="کد دسترسی"
+            autocomplete="off"
+            required
+        >
+
+        <button type="submit">
+            بررسی کد
+        </button>
+
+    </form>
+
+</section>
+
+
+{% if management_unlocked %}
+
+<section class="panel management-panel">
+
+    <h3>دسترسی مدیریتی فعال شد</h3>
+
+    <div class="management-actions">
+
+        <a
+            href="{{ url_for('admin_login') }}"
+            class="management-button"
+        >
+            مدیریت Owner
+        </a>
+
+        <a
+            href="{{ url_for('admin_login') }}"
+            class="management-button"
+        >
+            ورود به پنل Admin
+        </a>
+
+    </div>
+
+</section>
+
+{% endif %}

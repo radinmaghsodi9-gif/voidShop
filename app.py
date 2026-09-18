@@ -235,7 +235,12 @@ def account():
     orders = Order.query.filter_by(user_id=session['user_id']).order_by(Order.created_at.desc()).all()
     favs = Favorite.query.filter_by(user_id=session['user_id']).all()
     fav_products = [Product.query.get(f.product_id) for f in favs]
-    return render_template('account.html', orders=orders, fav_products=[p for p in fav_products if p])
+    return render_template(
+    'account.html',
+    orders=orders,
+    favorites=favorites,
+    management_unlocked=session.get('management_unlocked', False)
+)
 
 @app.route('/order/<int:product_id>', methods=['GET','POST'])
 @user_required
@@ -285,7 +290,24 @@ def success(order_id):
     order = Order.query.filter_by(id=order_id, user_id=session['user_id']).first_or_404()
     return render_template('success.html', order=order)
 
+@app.route('/account/management-access', methods=['POST'])
+def management_access():
+    if not session.get('user_id'):
+        return redirect(url_for('login'))
+
+    code = request.form.get('management_code', '').strip()
+
+    if code == MANAGEMENT_ACCESS_CODE:
+        session['management_unlocked'] = True
+        flash('دسترسی مدیریتی فعال شد.', 'ok')
+    else:
+        session.pop('management_unlocked', None)
+        flash('کد دسترسی اشتباه است.', 'error')
+
+    return redirect(url_for('account'))
+
 OWNER_EMAIL = 'radinmaghsodi9@gmail.com'
+MANAGEMENT_ACCESS_CODE = 'Admin 3317'
 
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
@@ -326,6 +348,7 @@ def admin_logout():
     session.pop('admin', None)
     session.pop('admin_role', None)
     session.pop('admin_email', None)
+    session.pop('management_unlocked', None)
 
     return redirect(url_for('index'))
 

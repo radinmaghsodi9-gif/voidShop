@@ -5,15 +5,14 @@
 <section class="panel" style="max-width: 500px; margin: 50px auto;">
     <h2>ورود به پنل مدیریت</h2>
 
-    <form method="post" class="settings">
+    <form method="post">
         <label>
             ایمیل
             <input
                 type="email"
                 name="username"
-                placeholder="owner@example.com"
+                placeholder="ایمیل مدیریت"
                 required
-                autocomplete="email"
             >
         </label>
 
@@ -24,11 +23,10 @@
                 name="password"
                 placeholder="رمز عبور"
                 required
-                autocomplete="current-password"
             >
         </label>
 
-        <button type="submit">ورود به پنل مدیریت</button>
+        <button type="submit">ورود</button>
     </form>
 </section>
 {% endblock %}
